@@ -3,8 +3,15 @@ package frc.team3324.robot
 import edu.wpi.first.networktables.NetworkTableInstance
 import edu.wpi.first.wpilibj.*
 import edu.wpi.first.wpilibj.XboxController.Button
+import edu.wpi.first.wpilibj.controller.PIDController
+import edu.wpi.first.wpilibj.controller.RamseteController
+import edu.wpi.first.wpilibj.controller.SimpleMotorFeedforward
+import edu.wpi.first.wpilibj.trajectory.Trajectory
 import edu.wpi.first.wpilibj.trajectory.TrapezoidProfile
+import edu.wpi.first.wpilibj.trajectory.constraint.DifferentialDriveVoltageConstraint
 import edu.wpi.first.wpilibj2.command.Command
+import edu.wpi.first.wpilibj2.command.PIDCommand
+import edu.wpi.first.wpilibj2.command.RamseteCommand
 import edu.wpi.first.wpilibj2.command.button.JoystickButton
 import frc.team3324.robot.drivetrain.DriveTrain
 import frc.team3324.robot.drivetrain.commands.teleop.Drive
@@ -86,6 +93,33 @@ class RobotContainer {
         secondaryController.setRumble(GenericHID.RumbleType.kRightRumble, rumbleLevel)
     }
 
+    fun getAutoCommand(trajectory: Trajectory): Command {
+        val autoVoltageConstraint = DifferentialDriveVoltageConstraint(
+            SimpleMotorFeedforward(Consts.DriveTrain.ksVolts,
+                Consts.DriveTrain.LOW_GEAR_KV,
+                Consts.DriveTrain.LOW_GEAR_KA),
+            Consts.DriveTrain.kDriveKinematics, 10.0) // maxVoltage of 10 allows for head room
+
+        driveTrain.resetOdometry(trajectory.initialPose)
+
+        val ramseteCommand = RamseteCommand(
+            trajectory,
+            {driveTrain.pose},
+            RamseteController(Consts.DriveTrain.kRamseteB, Consts.DriveTrain.kRamseteZeta),
+            SimpleMotorFeedforward(Consts.DriveTrain.ksVolts, Consts.DriveTrain.LOW_GEAR_KV, Consts.DriveTrain.LOW_GEAR_KA),
+            Consts.DriveTrain.kDriveKinematics,
+            {driveTrain.wheelSpeeds},
+            PIDController(Consts.DriveTrain.kP, 0.0, 0.0),
+            PIDController(Consts.DriveTrain.kP, 0.0, 0.0),
+            driveTrain::tankDriveVolts,
+            driveTrain
+        )
+
+        driveTrain.resetOdometry(trajectory.initialPose)
+
+        return ramseteCommand.andThen({driveTrain.tankDriveVolts(0.0, 0.0)}, driveTrain)
+    }
+  
     private fun importTrajectory(navPath: String): Trajectory {
         var path = "frc/team3324/robot/util/paths/" + navPath
         val trajectoryPath: Path = Filesystem.getDeployDirectory().toPath().resolve(path)

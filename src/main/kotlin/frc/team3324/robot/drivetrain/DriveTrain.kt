@@ -168,6 +168,10 @@ class DriveTrain: SubsystemBase(), Loggable {
         gyro.reset()
     }
 
+    fun resetOdometry(pose: Pose2d) {
+        diffDriveOdometry.resetPosition(pose, Rotation2d.fromDegrees(gyro.yaw.toDouble()))
+    }
+
     override fun periodic() {
         diffDriveOdometry.update(Rotation2d.fromDegrees(gyro.yaw.toDouble()), leftEncoder.position, rightEncoder.position)
         shifterCount += 1
