@@ -13,22 +13,27 @@ import edu.wpi.first.wpilibj2.command.Command
 import edu.wpi.first.wpilibj2.command.PIDCommand
 import edu.wpi.first.wpilibj2.command.RamseteCommand
 import edu.wpi.first.wpilibj2.command.button.JoystickButton
-import frc.team3324.library.commands.MotorCommand
 import frc.team3324.robot.drivetrain.DriveTrain
 import frc.team3324.robot.drivetrain.commands.teleop.Drive
-import frc.team3324.robot.drivetrain.commands.teleop.GyroTurn
-import frc.team3324.robot.util.Camera
-import frc.team3324.robot.util.Consts
-import frc.team3324.library.commands.ToggleLightCommand
-import frc.team3324.library.subsystems.MotorSubsystem
 import frc.team3324.robot.drivetrain.commands.auto.MeterForward
 import io.github.oblarg.oblog.Logger
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser
+import edu.wpi.first.wpilibj.trajectory.Trajectory
+import edu.wpi.first.wpilibj.trajectory.TrajectoryUtil
+import edu.wpi.first.wpilibj.Filesystem
+import java.nio.file.Path
+
+
+
+
 
 class RobotContainer {
     private val driveTrain = DriveTrain()
 
 
     private val table = NetworkTableInstance.getDefault()
+
+    private val navChooser = SendableChooser<Trajectory>()
 
     private val primaryController = XboxController(0)
     private val secondaryController = XboxController(1)
@@ -65,6 +70,9 @@ class RobotContainer {
 
        configureButtonBindings()
 
+       navChooser.setDefaultOption("Barrel Racing Path", importTrajectory("BarrelRacingPath.json"))
+       navChooser.addOption("Slalom Path", importTrajectory("SlalomPath.json"))
+       navChooser.addOption("Bounce Path", importTrajectory("BouncePath.json"))
    }
 
     private fun configureButtonBindings() {
@@ -110,5 +118,11 @@ class RobotContainer {
         driveTrain.resetOdometry(trajectory.initialPose)
 
         return ramseteCommand.andThen({driveTrain.tankDriveVolts(0.0, 0.0)}, driveTrain)
+    }
+  
+    private fun importTrajectory(navPath: String): Trajectory {
+        var path = "frc/team3324/robot/util/paths/" + navPath
+        val trajectoryPath: Path = Filesystem.getDeployDirectory().toPath().resolve(path)
+        return TrajectoryUtil.fromPathweaverJson(trajectoryPath)
     }
 }
