@@ -5,6 +5,8 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler
 import edu.wpi.first.cameraserver.CameraServer
 import edu.wpi.first.wpilibj.*
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard
+import edu.wpi.first.wpilibj.trajectory.Trajectory
+import edu.wpi.first.wpilibj.trajectory.TrajectoryUtil
 import io.github.oblarg.oblog.Logger
 
 class Robot: TimedRobot() {
@@ -31,7 +33,6 @@ class Robot: TimedRobot() {
     }
 
     override fun robotPeriodic() {
-        CameraServer.getInstance().getVideo()
         CommandScheduler.getInstance().run()
         Logger.updateEntries()
         Logger.updateEntries()
@@ -44,7 +45,15 @@ class Robot: TimedRobot() {
     override fun teleopPeriodic() {
     }
 
+    override fun autonomousInit() {
+        val trajectoryPath = Filesystem.getDeployDirectory().toPath().resolve("paths/StraightLine.wpilib.json")
+        val trajectory = TrajectoryUtil.fromPathweaverJson(trajectoryPath)
+        if (trajectory != null) {
+            System.out.println("beep boop i am here <-----------------------------------------------------")
+            robotContainer.getAutoCommand(trajectory).schedule()
+            System.out.println("meep moop i am gone <-----------------------------------------------------")
+        }
+    }
     override fun autonomousPeriodic() {
-        super.autonomousPeriodic()
     }
 }

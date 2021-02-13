@@ -18,13 +18,13 @@ import frc.team3324.robot.drivetrain.commands.teleop.Drive
 import frc.team3324.robot.drivetrain.commands.auto.MeterForward
 import io.github.oblarg.oblog.Logger
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser
-import edu.wpi.first.wpilibj.trajectory.Trajectory
 import edu.wpi.first.wpilibj.trajectory.TrajectoryUtil
 import edu.wpi.first.wpilibj.Filesystem
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard
+import frc.team3324.robot.util.Consts
 import java.nio.file.Path
-
-
-
+import java.util.function.BiConsumer
+import java.util.function.Supplier
 
 
 class RobotContainer {
@@ -69,10 +69,14 @@ class RobotContainer {
        driveTrain.defaultCommand = Drive(driveTrain, {primaryController.getY(GenericHID.Hand.kLeft)}, {primaryController.getX(GenericHID.Hand.kRight)})
 
        configureButtonBindings()
+       navChooser.setDefaultOption("Straight Line", importTrajectory("StraightLine.wpilib.json"))
+       navChooser.addOption("Barrel Racing Path", importTrajectory("BarrelRacingPath.wpilib.json"))
+       navChooser.addOption("Slalom Path", importTrajectory("Slalom.wpilib.json"))
+       navChooser.addOption("Bounce Path", importTrajectory("Bounce.wpilib.json"))
+       navChooser.addOption("Smol (Alex)", importTrajectory("smol.wpilib.json"))
 
-       navChooser.setDefaultOption("Barrel Racing Path", importTrajectory("BarrelRacingPath.json"))
-       navChooser.addOption("Slalom Path", importTrajectory("SlalomPath.json"))
-       navChooser.addOption("Bounce Path", importTrajectory("BouncePath.json"))
+
+       SmartDashboard.putData(navChooser)
    }
 
     private fun configureButtonBindings() {
@@ -104,24 +108,28 @@ class RobotContainer {
 
         val ramseteCommand = RamseteCommand(
             trajectory,
-            {driveTrain.pose},
+            Supplier{driveTrain.pose},
             RamseteController(Consts.DriveTrain.kRamseteB, Consts.DriveTrain.kRamseteZeta),
             SimpleMotorFeedforward(Consts.DriveTrain.ksVolts, Consts.DriveTrain.LOW_GEAR_KV, Consts.DriveTrain.LOW_GEAR_KA),
             Consts.DriveTrain.kDriveKinematics,
-            {driveTrain.wheelSpeeds},
+            Supplier{driveTrain.wheelSpeeds},
             PIDController(Consts.DriveTrain.kP, 0.0, 0.0),
             PIDController(Consts.DriveTrain.kP, 0.0, 0.0),
-            driveTrain::tankDriveVolts,
+            BiConsumer(driveTrain::tankDriveVolts),
             driveTrain
         )
 
         driveTrain.resetOdometry(trajectory.initialPose)
 
-        return ramseteCommand.andThen({driveTrain.tankDriveVolts(0.0, 0.0)}, driveTrain)
+        return ramseteCommand.andThen({driveTrain.tankDriveVolts(0.0, 0.0)}, arrayOf(driveTrain))
+    }
+
+    fun getTrajectory():Trajectory? {
+        return navChooser.selected
     }
   
-    private fun importTrajectory(navPath: String): Trajectory {
-        var path = "frc/team3324/robot/util/paths/" + navPath
+    fun importTrajectory(navPath: String): Trajectory {
+        var path = "paths/" + navPath
         val trajectoryPath: Path = Filesystem.getDeployDirectory().toPath().resolve(path)
         return TrajectoryUtil.fromPathweaverJson(trajectoryPath)
     }
